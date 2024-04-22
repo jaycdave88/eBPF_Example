@@ -1,0 +1,36 @@
+# Use a base image with essential tools installed
+FROM ubuntu:20.04
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    clang \
+    llvm \
+    libclang-dev \
+    iproute2 \
+    linux-headers-$(uname -r) \
+    gcc \
+    make \
+    git \
+    python3 \
+    python3-pip \
+    bpfcc-tools \
+    python3-bpfcc \
+    iputils-ping \
+    net-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set environment variables for the Observe customer ID and bearer token
+ENV OBSERVE_ENDPOINT=""
+ENV OBSERVE_BEARER_TOKEN=""
+
+# Set the working directory
+WORKDIR /ebpf-example
+
+RUN  pip3 install requests
+
+# Copy the eBPF program and user space code into the container
+COPY ebpf_programs/ ./ebpf_programs/
+COPY user_space/ ./user_space/
+
+# Set the entry point to the user space monitor
+ENTRYPOINT ["python3", "./user_space/monitor.py"]

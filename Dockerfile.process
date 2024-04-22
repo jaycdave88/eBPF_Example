@@ -1,0 +1,40 @@
+# Use Ubuntu 20.04 as the base image
+FROM ubuntu:20.04
+
+# Avoiding user interaction with tzdata and other packages
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Set environment variables for the Observe customer ID and bearer token
+ENV OBSERVE_ENDPOINT=""
+ENV OBSERVE_BEARER_TOKEN=""
+
+USER root
+
+# Install necessary tools
+RUN apt-get update && apt-get install -y wget software-properties-common gnupg lsb-release
+
+# Add the LLVM repository for Ubuntu Focal 20.04 and install the GPG key
+RUN wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
+RUN echo "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-12 main" | tee /etc/apt/sources.list.d/llvm.list
+
+# Add the iovisor GPG key and repository for BCC
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 4052245BD4284CDD
+RUN echo "deb https://repo.iovisor.org/apt/$(lsb_release -cs) $(lsb_release -cs) main" | tee /etc/apt/sources.list.d/iovisor.list
+
+# Update apt and install dependencies
+RUN apt-get update && apt-get install -y \
+    bcc \
+    bcc-tools \
+    libbcc-examples \
+    linux-headers-$(uname -r) \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set the working directory
+WORKDIR /ebpf-example
+
+# Copy the eBPF program and user space code into the container
+COPY ebpf_programs/ ./ebpf_programs/
+COPY user_space/ ./user_space/
+
+# Set the entry point to run the python script
+ENTRYPOINT ["python3", "./user_space/process_monitor.py"]
